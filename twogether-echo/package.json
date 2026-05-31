@@ -1,0 +1,13 @@
+{
+  "name": "twogether-echo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Twogether — The Echo: a hidden simultaneous-choice 'same wavelength?' co-op level.",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

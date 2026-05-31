@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0c1020" />
+    <title>Twogether — The Echo</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <!-- HOME -->
+    <div id="home" class="screen">
+      <div class="card">
+        <h1>The Echo</h1>
+        <p class="sub">Twogether · same wavelength?</p>
+        <p class="blurb">
+          Open on <b>two phones</b>. You'll both get the same question — pick your answer
+          <b>privately</b>. Your partner only sees that you've locked in, never <i>what</i>.
+          Match <b>3 in a row</b> to open the way. Miss one, and you start over.
+        </p>
+        <button id="btn-create" class="primary">Create a room</button>
+        <div class="join">
+          <input id="join-code" placeholder="ROOM CODE" maxlength="6" autocomplete="off" autocapitalize="characters" />
+          <button id="btn-join" class="ghost">Join</button>
+        </div>
+        <p class="hint">No peeking at each other's screen 👀 — trust the thread.</p>
+      </div>
+    </div>
+
+    <!-- LOBBY / SHARE -->
+    <div id="lobby" class="screen hidden">
+      <div class="card">
+        <h2>Share with your partner</h2>
+        <div class="code" id="lobby-code">––––</div>
+        <img id="qr" class="qr" alt="Scan to join" />
+        <button id="btn-copy" class="ghost">Copy invite link</button>
+        <p class="status" id="lobby-status">Waiting for your partner to join…</p>
+        <button id="btn-enter" class="primary">Enter</button>
+      </div>
+    </div>
+
+    <!-- PLAY -->
+    <div id="play" class="play hidden">
+      <div id="ewait" class="ewait hidden">Waiting for your partner…</div>
+      <div class="play-inner">
+        <div id="progress" class="progress"></div>
+        <h2 id="prompt" class="prompt"></h2>
+        <div id="stage" class="stage"></div>
+        <p id="status" class="estatus"></p>
+      </div>
+    </div>
+
+    <!-- WIN -->
+    <div id="win" class="screen hidden">
+      <div class="card">
+        <h2>Same wavelength. 🎉</h2>
+        <p class="sub" id="win-sub">Three in a row — you two think as one.</p>
+        <button id="btn-again" class="primary">Play again</button>
+      </div>
+    </div>
+
+    <script type="module" src="/echo.js"></script>
+  </body>
+</html>
