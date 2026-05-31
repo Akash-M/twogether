@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Twogether — Single-Device Preview</title>
+    <style>
+      :root {
+        --teal: #36e0c0;
+        --coral: #ff6b7a;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body {
+        margin: 0; height: 100%; width: 100%;
+        background: #0c1020; color: #e8ecff;
+        overflow: hidden; overscroll-behavior: none; touch-action: none; user-select: none;
+      }
+      #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+      .note {
+        position: fixed; top: env(safe-area-inset-top); left: 50%; transform: translateX(-50%);
+        margin-top: 8px; padding: 7px 14px; max-width: 92vw; text-align: center;
+        font-size: 12.5px; line-height: 1.35; color: #b9c1ea;
+        background: rgba(20, 26, 52, 0.7); border: 1px solid rgba(141, 151, 196, 0.25);
+        border-radius: 12px; z-index: 10; backdrop-filter: blur(8px);
+      }
+      .note b { color: var(--teal); }
+      .stick {
+        position: absolute; width: 116px; height: 116px; margin: -58px 0 0 -58px;
+        border-radius: 50%; opacity: 0; transition: opacity 0.1s; z-index: 5;
+      }
+      .stick.s1 { border: 2px solid rgba(54, 224, 192, 0.45); background: rgba(54, 224, 192, 0.08); }
+      .stick.s2 { border: 2px solid rgba(255, 107, 122, 0.45); background: rgba(255, 107, 122, 0.08); }
+      .stick.on { opacity: 1; }
+      .knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; }
+      .s1 .knob { background: var(--teal); }
+      .s2 .knob { background: var(--coral); }
+      .overlay {
+        position: fixed; inset: 0; z-index: 20; display: none;
+        align-items: center; justify-content: center;
+        background: rgba(8, 11, 24, 0.82); backdrop-filter: blur(8px);
+      }
+      .overlay.show { display: flex; }
+      .card {
+        text-align: center; background: #161c34; border: 1px solid rgba(141, 151, 196, 0.2);
+        border-radius: 20px; padding: 28px 26px; max-width: 340px;
+      }
+      .card h2 { margin: 0 0 10px; font-size: 24px; }
+      .card p { color: #aeb6e0; font-size: 14px; margin: 0 0 20px; }
+      .btn {
+        padding: 13px 26px; font: 700 16px system-ui; color: #06121a; border: none; border-radius: 12px;
+        background: linear-gradient(120deg, var(--teal), #6df0d6); cursor: pointer;
+      }
+      .hint {
+        position: fixed; bottom: env(safe-area-inset-bottom); left: 50%; transform: translateX(-50%);
+        margin-bottom: 10px; font-size: 12px; color: #6b75a6; z-index: 6; text-align: center; width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div class="note">
+      <b>Single-device preview.</b> Left thumb = teal, right thumb = coral. The orb only moves while
+      <b>both</b> are near it. Carry it to the glowing pad. (The real game syncs this across two phones.)
+    </div>
+    <div id="s1" class="stick s1"><div class="knob"></div></div>
+    <div id="s2" class="stick s2"><div class="knob"></div></div>
+    <div class="hint">Desktop: P1 = W A S D · P2 = arrow keys</div>
+    <div id="overlay" class="overlay">
+      <div class="card">
+        <h2>You carried it together.</h2>
+        <p>This is the feel we'll sync across two phones in real time.</p>
+        <button class="btn" id="again">Play again</button>
+      </div>
+    </div>
+
+    <script>
+      // ---- constants (match src/shared.ts) ----
+      const WORLD_W = 1280, WORLD_H = 720;
+      const PLAYER_SPEED = 340, PLAYER_RADIUS = 26;
+      const ORB_RADIUS = 30, GRAB_RADIUS = 95, MAX_STRETCH = 380, ORB_LERP = 0.35;
+      const GOAL = { x: 1130, y: 250, w: 150, h: 220 };
+      const START = { p1: { x: 200, y: 360 }, p2: { x: 330, y: 360 } };
+      const ORB_START = { x: 540, y: 360 };
+
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+
+      const players = [
+        { x: START.p1.x, y: START.p1.y, color: "#36e0c0", label: "P1" },
+        { x: START.p2.x, y: START.p2.y, color: "#ff6b7a", label: "P2" },
+      ];
+      let orb = { x: ORB_START.x, y: ORB_START.y, held: false };
+      let won = false;
+
+      // ---- input: two dynamic sticks (left half / right half) + keyboard ----
+      const sticks = [
+        { id: null, ox: 0, oy: 0, vx: 0, vy: 0, el: document.getElementById("s1") },
+        { id: null, ox: 0, oy: 0, vx: 0, vy: 0, el: document.getElementById("s2") },
+      ];
+      const R = 55;
+      const keys = new Set();
+      addEventListener("keydown", (e) => keys.add(e.key.toLowerCase()));
+      addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
+
+      addEventListener("pointerdown", (e) => {
+        const idx = e.clientX < innerWidth / 2 ? 0 : 1;
+        const s = sticks[idx];
+        if (s.id !== null) return;
+        s.id = e.pointerId;
+        s.ox = e.clientX;
+        s.oy = e.clientY;
+        s.el.style.left = e.clientX + "px";
+        s.el.style.top = e.clientY + "px";
+        s.el.classList.add("on");
+        s.el.querySelector(".knob").style.transform = "translate(-50%,-50%)";
+      });
+      addEventListener("pointermove", (e) => {
+        for (const s of sticks) {
+          if (s.id !== e.pointerId) continue;
+          const dx = e.clientX - s.ox, dy = e.clientY - s.oy;
+          const cl = Math.min(Math.hypot(dx, dy), R);
+          const a = Math.atan2(dy, dx);
+          const kx = Math.cos(a) * cl, ky = Math.sin(a) * cl;
+          s.el.querySelector(".knob").style.transform = `translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
+          s.vx = (Math.cos(a) * cl) / R;
+          s.vy = (Math.sin(a) * cl) / R;
+        }
+      });
+      function up(e) {
+        for (const s of sticks) {
+          if (s.id !== e.pointerId) continue;
+          s.id = null; s.vx = 0; s.vy = 0; s.el.classList.remove("on");
+        }
+      }
+      addEventListener("pointerup", up);
+      addEventListener("pointercancel", up);
+
+      function inputFor(i) {
+        let vx = sticks[i].vx, vy = sticks[i].vy;
+        if (i === 0) {
+          if (keys.has("a")) vx -= 1; if (keys.has("d")) vx += 1;
+          if (keys.has("w")) vy -= 1; if (keys.has("s")) vy += 1;
+        } else {
+          if (keys.has("arrowleft")) vx -= 1; if (keys.has("arrowright")) vx += 1;
+          if (keys.has("arrowup")) vy -= 1; if (keys.has("arrowdown")) vy += 1;
+        }
+        return { vx, vy };
+      }
+
+      // ---- sim ----
+      function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+      function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+      let last = performance.now();
+      function step(dt) {
+        players.forEach((p, i) => {
+          let { vx, vy } = inputFor(i);
+          const m = Math.hypot(vx, vy);
+          if (m > 1) { vx /= m; vy /= m; }
+          p.x = clamp(p.x + vx * PLAYER_SPEED * dt, PLAYER_RADIUS, WORLD_W - PLAYER_RADIUS);
+          p.y = clamp(p.y + vy * PLAYER_SPEED * dt, PLAYER_RADIUS, WORLD_H - PLAYER_RADIUS);
+        });
+        const stretch = dist(players[0], players[1]);
+        const near0 = dist(players[0], orb) <= GRAB_RADIUS;
+        const near1 = dist(players[1], orb) <= GRAB_RADIUS;
+        orb.held = !won && near0 && near1 && stretch <= MAX_STRETCH;
+        if (orb.held) {
+          const mx = (players[0].x + players[1].x) / 2;
+          const my = (players[0].y + players[1].y) / 2;
+          orb.x += (mx - orb.x) * ORB_LERP;
+          orb.y += (my - orb.y) * ORB_LERP;
+        }
+        if (!won && orb.x >= GOAL.x && orb.x <= GOAL.x + GOAL.w && orb.y >= GOAL.y && orb.y <= GOAL.y + GOAL.h) {
+          won = true;
+          document.getElementById("overlay").classList.add("show");
+        }
+        return stretch;
+      }
+
+      // ---- view + draw ----
+      let scale = 1, ox = 0, oy = 0;
+      function resize() {
+        const dpr = Math.min(2, devicePixelRatio || 1);
+        canvas.width = Math.floor(innerWidth * dpr);
+        canvas.height = Math.floor(innerHeight * dpr);
+        const sc = Math.min(innerWidth / WORLD_W, innerHeight / WORLD_H);
+        scale = sc * dpr;
+        ox = (canvas.width - WORLD_W * scale) / 2;
+        oy = (canvas.height - WORLD_H * scale) / 2;
+      }
+      addEventListener("resize", resize);
+      const wx = (x) => ox + x * scale, wy = (y) => oy + y * scale, ws = (v) => v * scale;
+
+      function draw(stretch) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#0e1430";
+        ctx.fillRect(wx(0), wy(0), ws(WORLD_W), ws(WORLD_H));
+        ctx.strokeStyle = "rgba(141,151,196,0.18)";
+        ctx.lineWidth = ws(2);
+        ctx.strokeRect(wx(0), wy(0), ws(WORLD_W), ws(WORLD_H));
+
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 400);
+        ctx.fillStyle = `rgba(54,224,192,${0.12 + 0.12 * pulse})`;
+        ctx.fillRect(wx(GOAL.x), wy(GOAL.y), ws(GOAL.w), ws(GOAL.h));
+        ctx.strokeStyle = "rgba(54,224,192,0.8)";
+        ctx.lineWidth = ws(3);
+        ctx.strokeRect(wx(GOAL.x), wy(GOAL.y), ws(GOAL.w), ws(GOAL.h));
+
+        if (orb.held) {
+          const near = stretch > MAX_STRETCH * 0.8;
+          ctx.strokeStyle = near ? "rgba(255,107,122,0.9)" : "rgba(255,255,255,0.5)";
+          ctx.lineWidth = ws(near ? 6 : 3);
+          ctx.beginPath();
+          ctx.moveTo(wx(players[0].x), wy(players[0].y));
+          ctx.lineTo(wx(players[1].x), wy(players[1].y));
+          ctx.stroke();
+        }
+
+        ctx.beginPath();
+        ctx.arc(wx(orb.x), wy(orb.y), ws(ORB_RADIUS), 0, 7);
+        ctx.fillStyle = orb.held ? "#ffd76b" : "#7c84b8";
+        if (orb.held) { ctx.shadowColor = "#ffd76b"; ctx.shadowBlur = ws(24); }
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        for (const p of players) {
+          ctx.beginPath();
+          ctx.arc(wx(p.x), wy(p.y), ws(PLAYER_RADIUS), 0, 7);
+          ctx.fillStyle = p.color;
+          ctx.fill();
+          ctx.fillStyle = "#0c1020";
+          ctx.font = `bold ${ws(18)}px system-ui`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(p.label, wx(p.x), wy(p.y));
+          ctx.textBaseline = "alphabetic";
+        }
+      }
+
+      function loop(now) {
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        const stretch = step(dt);
+        draw(stretch);
+        requestAnimationFrame(loop);
+      }
+
+      document.getElementById("again").onclick = () => {
+        players[0].x = START.p1.x; players[0].y = START.p1.y;
+        players[1].x = START.p2.x; players[1].y = START.p2.y;
+        orb = { x: ORB_START.x, y: ORB_START.y, held: false };
+        won = false;
+        document.getElementById("overlay").classList.remove("show");
+      };
+
+      resize();
+      requestAnimationFrame(loop);
+    </script>
+  </body>
+</html>

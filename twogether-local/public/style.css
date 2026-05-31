@@ -1,0 +1,299 @@
+:root {
+  --bg: #0c1020;
+  --teal: #36e0c0;
+  --coral: #ff6b7a;
+  --ink: #e8ecff;
+  --muted: #8d97c4;
+  --card: #161c34;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  width: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#game {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: radial-gradient(120% 120% at 50% 0%, #131a33 0%, #0c1020 70%);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ---------- HUD ---------- */
+.hud {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  padding: 6px 12px;
+  font: 600 12px/1 ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: 0.3px;
+  background: rgba(10, 14, 30, 0.6);
+  border: 1px solid rgba(141, 151, 196, 0.25);
+  border-radius: 999px;
+  color: var(--muted);
+  z-index: 30;
+  backdrop-filter: blur(8px);
+}
+.hud span {
+  white-space: nowrap;
+}
+#hud-rtt {
+  color: var(--teal);
+}
+
+/* ---------- banner ---------- */
+.banner {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 84px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  background: rgba(255, 107, 122, 0.15);
+  border: 1px solid rgba(255, 107, 122, 0.4);
+  color: #ffd9de;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 30;
+  text-align: center;
+}
+
+/* ---------- latency simulator ---------- */
+.lat {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 44px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 6px;
+  background: rgba(10, 14, 30, 0.6);
+  border: 1px solid rgba(141, 151, 196, 0.25);
+  border-radius: 999px;
+  z-index: 31;
+  backdrop-filter: blur(8px);
+}
+.lat-label {
+  font: 700 9px ui-monospace, monospace;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 4px;
+}
+.lat button {
+  font: 700 11px ui-monospace, monospace;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  padding: 5px 9px;
+}
+.lat button.on {
+  color: #06121a;
+  background: var(--teal);
+}
+
+/* ---------- touch controls ---------- */
+.controls {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+.stick {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  margin: -60px 0 0 -60px;
+  border-radius: 50%;
+  border: 2px solid rgba(54, 224, 192, 0.4);
+  background: rgba(54, 224, 192, 0.08);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.stick.on {
+  opacity: 1;
+}
+.knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 54px;
+  margin: -27px 0 0 -27px;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 6px 20px rgba(54, 224, 192, 0.4);
+}
+.grab {
+  position: absolute;
+  right: calc(env(safe-area-inset-right) + 26px);
+  bottom: calc(env(safe-area-inset-bottom) + 40px);
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 107, 122, 0.5);
+  background: rgba(255, 107, 122, 0.12);
+  color: #ffd9de;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 1px;
+}
+.grab.on {
+  background: rgba(255, 107, 122, 0.45);
+  transform: scale(0.94);
+}
+
+/* ---------- screens ---------- */
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(8, 11, 24, 0.82);
+  backdrop-filter: blur(10px);
+}
+.card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--card);
+  border: 1px solid rgba(141, 151, 196, 0.2);
+  border-radius: 22px;
+  padding: 28px 24px;
+  text-align: center;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+h1 {
+  margin: 0 0 4px;
+  font-size: 38px;
+  line-height: 1.02;
+  letter-spacing: -0.5px;
+  background: linear-gradient(120deg, var(--teal), var(--coral));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+h2 {
+  margin: 0 0 14px;
+  font-size: 24px;
+}
+.sub {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+  text-transform: lowercase;
+  letter-spacing: 1px;
+}
+.blurb {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #c3caf0;
+  margin: 0 0 22px;
+}
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+}
+.primary {
+  width: 100%;
+  padding: 15px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #06121a;
+  background: linear-gradient(120deg, var(--teal), #6df0d6);
+  border-radius: 14px;
+  margin-bottom: 14px;
+}
+.primary:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.ghost {
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid rgba(141, 151, 196, 0.4);
+  border-radius: 12px;
+}
+.join {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.join input {
+  flex: 1;
+  padding: 13px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: #0e1430;
+  border: 1px solid rgba(141, 151, 196, 0.4);
+  border-radius: 12px;
+}
+.hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 8px 0 0;
+}
+.code {
+  font: 800 44px/1 ui-monospace, Menlo, monospace;
+  letter-spacing: 8px;
+  color: var(--teal);
+  margin: 6px 0 18px;
+  padding-left: 8px;
+}
+.qr {
+  width: 180px;
+  height: 180px;
+  border-radius: 14px;
+  background: #fff;
+  padding: 10px;
+  margin: 0 auto 18px;
+  display: block;
+}
+.status {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 4px 0 18px;
+}
+.status.ready {
+  color: var(--teal);
+  font-weight: 700;
+}

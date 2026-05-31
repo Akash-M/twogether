@@ -1,0 +1,13 @@
+{
+  "name": "twogether-local",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "PartyKit-free real-time co-op spike: plain Node + ws. Immune to the ink/devtools CLI crash.",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

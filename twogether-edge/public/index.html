@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0c1020" />
+    <title>Twogether — Real-time Spike</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+
+    <!-- diagnostics overlay -->
+    <div id="hud" class="hud hidden">
+      <span id="hud-rtt">RTT –</span>
+      <span id="hud-fps">– fps</span>
+      <span id="hud-rate">– st/s</span>
+      <span id="hud-slot">P–</span>
+      <span id="hud-desync">Δ –</span>
+    </div>
+
+    <!-- waiting / info banner -->
+    <div id="banner" class="banner hidden"></div>
+
+    <!-- touch controls (visual only; input is read from window pointer zones) -->
+    <div id="controls" class="controls hidden">
+      <div id="stick" class="stick"><div id="stick-knob" class="knob"></div></div>
+      <div id="grab" class="grab">HOLD</div>
+    </div>
+
+    <!-- HOME -->
+    <div id="home" class="screen">
+      <div class="card">
+        <h1>Twogether</h1>
+        <p class="sub">real-time feasibility spike</p>
+        <p class="blurb">
+          Open this on <b>two phones</b>. One creates a room, the other joins with the code.
+          Carry the orb to the glowing pad — but it only moves while <b>both</b> of you hold it.
+        </p>
+        <button id="btn-create" class="primary">Create a room</button>
+        <div class="join">
+          <input id="join-code" placeholder="ROOM CODE" maxlength="6" autocomplete="off" autocapitalize="characters" />
+          <button id="btn-join" class="ghost">Join</button>
+        </div>
+        <p class="hint">Desktop test: WASD / arrows to move, hold Space to grab.</p>
+      </div>
+    </div>
+
+    <!-- LOBBY / SHARE -->
+    <div id="lobby" class="screen hidden">
+      <div class="card">
+        <h2>Share with your partner</h2>
+        <div class="code" id="lobby-code">––––</div>
+        <img id="qr" class="qr" alt="Scan to join" />
+        <button id="btn-copy" class="ghost">Copy invite link</button>
+        <p class="status" id="lobby-status">Waiting for your partner to join…</p>
+        <button id="btn-enter" class="primary">Enter game</button>
+      </div>
+    </div>
+
+    <!-- WIN -->
+    <div id="win" class="screen hidden">
+      <div class="card">
+        <h2>You did it — together.</h2>
+        <p class="sub">That only worked because you coordinated in real time.</p>
+        <button id="btn-again" class="primary">Play again</button>
+      </div>
+    </div>
+
+    <script type="module" src="/game.js"></script>
+  </body>
+</html>
