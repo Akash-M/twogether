@@ -10,7 +10,12 @@ const PLAYER_SPEED = 340,
 const ORB_RADIUS = 30,
   GRAB_RADIUS = 95,
   MAX_STRETCH = 380;
-const GOAL = { x: 1130, y: 250, w: 150, h: 220 };
+// ---- level geometry (MUST match server.mjs) ----
+const IGNITE = { x: 380, y: 360 }, IGNITE_R = 120;
+const LOCK = { x: 820, y: 360 }, LOCK_R = 72;
+const GATE_X = 980;
+const DOOR_EMBER = { x: 1066, y: 96, w: 176, h: 200, name: "EMBER" };
+const DOOR_TIDE = { x: 1066, y: 424, w: 176, h: 200, name: "TIDE" };
 
 // ---- network cadence ------------------------------------------------------
 const INPUT_MS = 50; // send input 20x/sec
@@ -38,6 +43,7 @@ let lastSent = { mvx: 0, mvy: 0, grab: false };
 let rttEMA = null;
 let pingId = 0;
 let simOneWay = 0; // simulated one-way latency in ms (added round-trip = 2x this)
+let introDone = false; // chapter intro card shown once
 
 // counters
 let frames = 0,
@@ -173,7 +179,7 @@ function handleMessage(m) {
   if (m.t === "state") {
     const slots = {};
     for (const p of m.players) slots[p.slot] = { x: p.x, y: p.y, grab: p.grab };
-    snaps.push({ rt: performance.now(), slots, ox: m.ox, oy: m.oy, held: m.held, won: m.won, stretch: m.stretch });
+    snaps.push({ rt: performance.now(), slots, ox: m.ox, oy: m.oy, held: m.held, won: m.won, stretch: m.stretch, stage: m.stage, orbActive: m.orbActive, gateOpen: m.gateOpen, door: m.door });
     if (snaps.length > 16) snaps.shift();
     won = m.won;
     stCount++;
@@ -258,6 +264,7 @@ function frame(now) {
     sendInput(false);
     draw();
     updateHud();
+    updateObjective();
   }
   requestAnimationFrame(frame);
 }
@@ -322,17 +329,12 @@ function draw() {
   ctx.lineWidth = ws(2);
   ctx.strokeRect(wx(0), wy(0), ws(WORLD_W), ws(WORLD_H));
 
-  // goal pad (glowing)
-  const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 400);
-  ctx.fillStyle = `rgba(54,224,192,${0.12 + 0.12 * pulse})`;
-  ctx.fillRect(wx(GOAL.x), wy(GOAL.y), ws(GOAL.w), ws(GOAL.h));
-  ctx.strokeStyle = "rgba(54,224,192,0.8)";
-  ctx.lineWidth = ws(3);
-  ctx.strokeRect(wx(GOAL.x), wy(GOAL.y), ws(GOAL.w), ws(GOAL.h));
-  ctx.fillStyle = "rgba(54,224,192,0.85)";
-  ctx.font = `${ws(20)}px ui-monospace, monospace`;
-  ctx.textAlign = "center";
-  ctx.fillText("GOAL", wx(GOAL.x + GOAL.w / 2), wy(GOAL.y - 16));
+  // stage-aware level geometry
+  const snapNow = latestSnap();
+  const stage = snapNow ? snapNow.stage : "ignite";
+  const gateOpen = snapNow ? snapNow.gateOpen : false;
+  const orbActive = snapNow ? snapNow.orbActive : false;
+  drawLevel(stage, gateOpen);
 
   // interpolated remote + orb
   const interp = interpAt(performance.now() - INTERP_MS);
@@ -377,15 +379,15 @@ function draw() {
     ctx.stroke();
   }
 
-  // orb
+  // orb — dormant grey until ignited, then a glowing carried light
   if (orb) {
     ctx.beginPath();
     ctx.arc(wx(orb.x), wy(orb.y), ws(ORB_RADIUS), 0, 7);
-    ctx.fillStyle = held ? "#ffd76b" : "#7c84b8";
+    ctx.fillStyle = orbActive ? "#ffd76b" : "#5a6088";
     ctx.fill();
-    if (held) {
+    if (orbActive) {
       ctx.shadowColor = "#ffd76b";
-      ctx.shadowBlur = ws(24);
+      ctx.shadowBlur = ws(held ? 30 : 16);
       ctx.fill();
       ctx.shadowBlur = 0;
     }
@@ -420,6 +422,88 @@ function drawPlayer(p, color, isMe, label) {
   ctx.textBaseline = "alphabetic";
 }
 
+function drawLevel(stage, gateOpen) {
+  const t = performance.now();
+  const pulse = 0.5 + 0.5 * Math.sin(t / 400);
+
+  // LOCK socket — the carry target
+  const lockActive = stage === "carry";
+  ctx.beginPath();
+  ctx.arc(wx(LOCK.x), wy(LOCK.y), ws(LOCK_R), 0, 7);
+  ctx.strokeStyle = lockActive ? `rgba(54,224,192,${0.45 + 0.4 * pulse})` : "rgba(141,151,196,0.3)";
+  ctx.lineWidth = ws(4);
+  ctx.stroke();
+  if (lockActive) {
+    ctx.fillStyle = "rgba(54,224,192,0.85)";
+    ctx.font = `${ws(15)}px ui-monospace, monospace`;
+    ctx.textAlign = "center";
+    ctx.fillText("LOCK", wx(LOCK.x), wy(LOCK.y - LOCK_R - 12));
+  }
+
+  // GATE — closed (red) until the light is delivered, then parts open
+  ctx.strokeStyle = gateOpen ? "rgba(54,224,192,0.25)" : "rgba(255,107,122,0.7)";
+  ctx.lineWidth = ws(6);
+  if (gateOpen) {
+    ctx.beginPath(); ctx.moveTo(wx(GATE_X), wy(40)); ctx.lineTo(wx(GATE_X), wy(180)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(wx(GATE_X), wy(540)); ctx.lineTo(wx(GATE_X), wy(680)); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.moveTo(wx(GATE_X), wy(40)); ctx.lineTo(wx(GATE_X), wy(680)); ctx.stroke();
+  }
+
+  // DOORS — meaningful once the gate is open
+  if (gateOpen) {
+    for (const d of [DOOR_EMBER, DOOR_TIDE]) {
+      ctx.fillStyle = `rgba(54,224,192,${0.1 + 0.1 * pulse})`;
+      ctx.fillRect(wx(d.x), wy(d.y), ws(d.w), ws(d.h));
+      ctx.strokeStyle = "rgba(54,224,192,0.8)";
+      ctx.lineWidth = ws(3);
+      ctx.strokeRect(wx(d.x), wy(d.y), ws(d.w), ws(d.h));
+      ctx.fillStyle = "rgba(232,236,255,0.92)";
+      ctx.font = `bold ${ws(24)}px ui-monospace, monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(d.name, wx(d.x + d.w / 2), wy(d.y + d.h / 2));
+      ctx.textBaseline = "alphabetic";
+    }
+  }
+
+  // IGNITE cue ring around the dormant light
+  if (stage === "ignite") {
+    ctx.beginPath();
+    ctx.arc(wx(IGNITE.x), wy(IGNITE.y), ws(IGNITE_R), 0, 7);
+    ctx.setLineDash([ws(9), ws(11)]);
+    ctx.strokeStyle = `rgba(255,215,107,${0.25 + 0.3 * pulse})`;
+    ctx.lineWidth = ws(2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+function updateObjective() {
+  const el = $("objective");
+  if (!el) return;
+  if (screen !== "play" || presence.count < 2) {
+    el.classList.add("hidden");
+    return;
+  }
+  const s = latestSnap();
+  const stage = s ? s.stage : "ignite";
+  const txt =
+    stage === "ignite"
+      ? "Move together and both HOLD to wake the light"
+      : stage === "carry"
+      ? "Carry the light to the LOCK"
+      : stage === "choose"
+      ? "Choose a door — stand in the SAME one, together"
+      : "";
+  if (txt) {
+    el.textContent = txt;
+    el.classList.remove("hidden");
+  } else {
+    el.classList.add("hidden");
+  }
+}
+
 // ---- hud ------------------------------------------------------------------
 function updateHud() {
   $("hud-rtt").textContent = "RTT " + (rttEMA == null ? "–" : Math.round(rttEMA) + "ms");
@@ -449,6 +533,12 @@ function show(name) {
   $("hud").classList.toggle("hidden", !playing);
   $("lat").classList.toggle("hidden", !playing);
   $("controls").classList.toggle("hidden", !playing);
+  $("objective").classList.toggle("hidden", !playing);
+  if (playing && !introDone) {
+    introDone = true;
+    const intro = $("intro");
+    if (intro) intro.classList.add("run");
+  }
   updateBanner();
 }
 
@@ -539,6 +629,10 @@ $("lat")
   });
 
 function showWin() {
+  const s = latestSnap();
+  const door = s && s.door ? s.door : "";
+  const el = $("win-path");
+  if (el) el.textContent = door ? `You took the ${door} path — and no two pairs go the same way.` : "";
   show("win");
 }
 

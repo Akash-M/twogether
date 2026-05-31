@@ -7,7 +7,7 @@
       content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
     />
     <meta name="theme-color" content="#0c1020" />
-    <title>Twogether — Real-time Spike</title>
+    <title>Twogether — Chapter 1: The Hollow</title>
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
@@ -41,14 +41,26 @@
       <div id="grab" class="grab">HOLD</div>
     </div>
 
+    <!-- current objective (per stage) -->
+    <div id="objective" class="objective hidden"></div>
+
+    <!-- chapter intro card (fades on first entry to play) -->
+    <div id="intro" class="intro">
+      <div class="intro-inner">
+        <p class="intro-ch">CHAPTER ONE</p>
+        <h2 class="intro-title">The Hollow</h2>
+        <p class="intro-sub">Two strangers wake, bound by a thread of light.<br />The only way out is together.</p>
+      </div>
+    </div>
+
     <!-- HOME -->
     <div id="home" class="screen">
       <div class="card">
         <h1>Twogether</h1>
-        <p class="sub">real-time feasibility spike</p>
+        <p class="sub">Chapter 1 · The Hollow</p>
         <p class="blurb">
           Open this on <b>two phones</b>. One creates a room, the other joins with the code.
-          Carry the orb to the glowing pad — but it only moves while <b>both</b> of you hold it.
+          Wake the light together, carry it to the lock, then choose a door — <b>both</b> of you, as one.
         </p>
         <button id="btn-create" class="primary">Create a room</button>
         <div class="join">
@@ -74,8 +86,9 @@
     <!-- WIN -->
     <div id="win" class="screen hidden">
       <div class="card">
-        <h2>You did it — together.</h2>
-        <p class="sub">That only worked because you coordinated in real time.</p>
+        <h2>Chapter One — complete.</h2>
+        <p class="sub" id="win-path"></p>
+        <p class="blurb">You found the way out of the Hollow — together.</p>
         <button id="btn-again" class="primary">Play again</button>
       </div>
     </div>

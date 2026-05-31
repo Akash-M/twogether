@@ -118,6 +118,74 @@ body {
   background: var(--teal);
 }
 
+/* ---------- objective hint ---------- */
+.objective {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 168px);
+  transform: translateX(-50%);
+  max-width: 86vw;
+  text-align: center;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #dfe5ff;
+  background: rgba(10, 14, 30, 0.62);
+  border: 1px solid rgba(141, 151, 196, 0.3);
+  border-radius: 999px;
+  z-index: 22;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+}
+
+/* ---------- chapter intro ---------- */
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #0a0e1c;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.intro.run {
+  animation: introCard 4s ease forwards;
+}
+@keyframes introCard {
+  0% { opacity: 0; visibility: visible; }
+  14% { opacity: 1; }
+  76% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+.intro-inner {
+  text-align: center;
+}
+.intro-ch {
+  margin: 0 0 8px;
+  font-size: 13px;
+  letter-spacing: 6px;
+  color: var(--muted);
+}
+.intro-title {
+  margin: 0 0 16px;
+  font-size: 44px;
+  letter-spacing: -0.5px;
+  background: linear-gradient(120deg, var(--teal), var(--coral));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.intro-sub {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #c3caf0;
+}
+
 /* ---------- touch controls ---------- */
 .controls {
   position: fixed;
